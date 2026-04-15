@@ -72,7 +72,7 @@ body{font-family:"IBM Plex Sans",sans-serif;background:var(--bg);min-height:100v
 .ac-detail{font-size:11px;color:var(--ink-muted);margin-top:2px}
 .ac-hl{font-weight:700;color:var(--accent)}
 /* ÜRÜN AC */
-.urun-ac{position:absolute;top:calc(100% + 2px);left:-12px;right:-12px;z-index:999;background:#fff;border:1px solid var(--rule);border-radius:0 0 8px 8px;box-shadow:0 8px 28px rgba(0,0,0,.13);max-height:210px;overflow-y:auto;display:none}
+.urun-ac{position:fixed;z-index:9999;background:#fff;border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);max-height:210px;overflow-y:auto;display:none;width:280px}
 .urun-ac.show{display:block}
 .urun-ac .ac-item{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .urun-ac .ac-item-meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-muted);white-space:nowrap}
@@ -452,21 +452,33 @@ function navMac(dir){const items=macEl.querySelectorAll(".ac-item");if(!items.le
 
 // ═══ ÜRÜN AUTOCOMPLETE ═══
 let uacTd=null,uacActive=-1;
+// Global ürün dropdown (body'de, fixed position)
+let _uacEl=null;
+function getUacEl(){
+  if(!_uacEl){_uacEl=document.createElement("div");_uacEl.className="urun-ac";document.body.appendChild(_uacEl)}
+  return _uacEl;
+}
 function showUac(td,query){
-  if(!query.trim()||!editMode){hideUac(td);return}
+  if(!query.trim()||!editMode){hideUac();return}
   const q=normalize(query),matches=URUN_DB.filter(u=>normalize(u.urun).includes(q)).slice(0,10);
-  if(!matches.length){hideUac(td);return}
-  let list=td.querySelector(".urun-ac");
-  if(!list){td.style.position="relative";list=document.createElement("div");list.className="urun-ac";td.appendChild(list)}
+  if(!matches.length){hideUac();return}
+  const list=getUacEl();
   list.innerHTML="";uacActive=-1;uacTd=td;
   matches.forEach(u=>{const item=document.createElement("div");item.className="ac-item";
     const re=new RegExp("("+query.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi");
     item.innerHTML=`<span class="ac-name">${u.urun.replace(re,'<span class="ac-hl">$1</span>')}</span><span class="ac-item-meta">${u.birim}</span>`;
-    item.onmousedown=e=>{e.preventDefault();applyUac(td,u)};list.appendChild(item)});
+    item.onmousedown=e=>{e.preventDefault();applyUac(td,u)};
+    item.ontouchend=e=>{e.preventDefault();applyUac(td,u)};
+    list.appendChild(item)});
+  // Pozisyonu td'ye göre hesapla
+  const rect=td.getBoundingClientRect();
+  list.style.left=rect.left+"px";
+  list.style.top=(rect.bottom+2)+"px";
+  list.style.width=Math.max(rect.width,250)+"px";
   list.classList.add("show");
 }
-function hideUac(td){const l=td&&td.querySelector(".urun-ac");if(l)l.classList.remove("show");uacActive=-1;uacTd=null}
-function applyUac(td,u){const tr=td.closest("tr");td.innerText=u.urun;tr.querySelector(".td-birim").innerText=u.birim;if(u.fiyat>0)tr.querySelector(".td-fiyat").innerText=u.fiyat.toLocaleString("tr-TR",{minimumFractionDigits:2});hideUac(td);calcTotals();tr.querySelector(".td-miktar").focus()}
+function hideUac(){const l=getUacEl();l.classList.remove("show");uacActive=-1;uacTd=null}
+function applyUac(td,u){const tr=td.closest("tr");td.innerText=u.urun;tr.querySelector(".td-birim").innerText=u.birim;if(u.fiyat>0)tr.querySelector(".td-fiyat").innerText=u.fiyat.toLocaleString("tr-TR",{minimumFractionDigits:2});hideUac();calcTotals();tr.querySelector(".td-miktar").focus()}
 
 // ═══ ACTIONS ═══
 function yeniTeklif(){
@@ -520,12 +532,12 @@ function addRow(data,editable){
   const urunObs=new MutationObserver(urunAcHandler);
   urunObs.observe(urunTd,{childList:true,characterData:true,subtree:true});
   urunTd.addEventListener("keydown",e=>{
-    if(e.key==="ArrowDown"){e.preventDefault();const items=urunTd.querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.min(items.length-1,(uacActive||0)+1);items[uacActive].classList.add("active")}}
-    else if(e.key==="ArrowUp"){e.preventDefault();const items=urunTd.querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.max(0,(uacActive||0)-1);items[uacActive].classList.add("active")}}
-    else if(e.key==="Enter"||e.key==="Tab"){const a=urunTd.querySelector(".ac-item.active")||urunTd.querySelector(".ac-item");if(a){e.preventDefault();a.dispatchEvent(new MouseEvent("mousedown"))}}
-    else if(e.key==="Escape")hideUac(urunTd)
+    if(e.key==="ArrowDown"){e.preventDefault();const items=getUacEl().querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.min(items.length-1,(uacActive||0)+1);items[uacActive].classList.add("active")}}
+    else if(e.key==="ArrowUp"){e.preventDefault();const items=getUacEl().querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.max(0,(uacActive||0)-1);items[uacActive].classList.add("active")}}
+    else if(e.key==="Enter"||e.key==="Tab"){const a=getUacEl().querySelector(".ac-item.active")||getUacEl().querySelector(".ac-item");if(a){e.preventDefault();a.dispatchEvent(new MouseEvent("mousedown"))}}
+    else if(e.key==="Escape")hideUac()
   });
-  urunTd.addEventListener("blur",()=>setTimeout(()=>hideUac(urunTd),160));
+  urunTd.addEventListener("blur",()=>setTimeout(()=>hideUac(),160));
   tr.querySelectorAll(".td-miktar,.td-fiyat").forEach(el=>{el.addEventListener("input",()=>calcTotals());el.addEventListener("keydown",e=>{if(e.key==="Enter")e.preventDefault()})});
   document.getElementById("tableBody").appendChild(tr);renumber();calcTotals();
   if(!data&&editable)urunTd.focus();
