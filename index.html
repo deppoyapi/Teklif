@@ -274,7 +274,7 @@ tbody tr:hover .del-row{opacity:1}
         </tr></thead><tbody id="tableBody"></tbody></table>
         <div class="add-row-bar"><button class="add-row-btn" onclick="addRow()">＋ Yeni Ürün / Satır Ekle</button></div>
         <div class="totals-section">
-          <div><div class="notes-label">Notlar &amp; Koşullar</div><div class="notes-content" contenteditable id="fNotlar">· Birim fiyatlar KDV hariçtir.<br>· Ödeme şekli: Nakit ödeme.<br>· Palet hariçtir, ücret 275₺ + KDV'dir.</div></div>
+          <div><div class="notes-label">Notlar &amp; Koşullar</div><div class="notes-content" contenteditable id="fNotlar">· Birim fiyatlar KDV hariçtir.<br>· Ödeme şekli: Nakit ödeme.<br>· Palet hariçtir, ücret 200₺ + KDV'dir.</div></div>
           <div class="totals-box">
             <div class="totals-row"><span>Ara Toplam</span><span class="totals-val" id="araToplam">0,00 ₺</span></div>
             <div class="totals-row kdv-row"><span>KDV %<input class="kdv-input" id="kdvRate" type="number" value="20" min="0" max="100" oninput="calcTotals()"></span><span class="totals-val" id="kdvAmount">0,00 ₺</span></div>
@@ -477,6 +477,14 @@ function showUac(td,query){
   list.style.width=Math.max(rect.width,250)+"px";
   list.classList.add("show");
 }
+function repositionUac(){
+  if(!uacTd)return;const l=getUacEl();if(!l.classList.contains("show"))return;
+  const rect=uacTd.getBoundingClientRect();
+  if(rect.bottom<0||rect.top>window.innerHeight){hideUac();return}
+  l.style.left=rect.left+"px";l.style.top=(rect.bottom+2)+"px";l.style.width=Math.max(rect.width,250)+"px";
+}
+document.addEventListener("scroll",repositionUac,true);
+window.addEventListener("resize",hideUac);
 function hideUac(){const l=getUacEl();l.classList.remove("show");uacActive=-1;uacTd=null}
 function applyUac(td,u){const tr=td.closest("tr");td.innerText=u.urun;tr.querySelector(".td-birim").innerText=u.birim;if(u.fiyat>0)tr.querySelector(".td-fiyat").innerText=u.fiyat.toLocaleString("tr-TR",{minimumFractionDigits:2});hideUac();calcTotals();tr.querySelector(".td-miktar").focus()}
 
