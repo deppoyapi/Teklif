@@ -216,7 +216,14 @@ tbody tr:hover .del-row{opacity:1}
     <input type="text" id="searchInput" placeholder="Müşteri adı veya teklif no ile ara…" oninput="filterList()">
   </div>
   <div class="teklif-list" id="teklifList"></div>
-  <div class="left-footer">Deppo Yapı Malzemeleri © 2026</div>
+  <div class="left-footer">
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px">
+      <button class="btn btn-ghost btn-sm" onclick="yedekAl()">📥 Yedek Al</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('yedekInput').click()">📤 Yedek Yükle</button>
+      <input type="file" id="yedekInput" accept=".json" style="display:none" onchange="yedekYukle(event)">
+    </div>
+    Deppo Yapı Malzemeleri © 2026
+  </div>
 </div>
 <div class="right" id="rightPanel">
   <div class="empty-state" id="emptyState">
@@ -509,6 +516,9 @@ function addRow(data,editable){
   urunTd.addEventListener("keyup",urunAcHandler);
   urunTd.addEventListener("compositionend",urunAcHandler);
   urunTd.addEventListener("focus",urunAcHandler);
+  // Mobil fallback: MutationObserver
+  const urunObs=new MutationObserver(urunAcHandler);
+  urunObs.observe(urunTd,{childList:true,characterData:true,subtree:true});
   urunTd.addEventListener("keydown",e=>{
     if(e.key==="ArrowDown"){e.preventDefault();const items=urunTd.querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.min(items.length-1,(uacActive||0)+1);items[uacActive].classList.add("active")}}
     else if(e.key==="ArrowUp"){e.preventDefault();const items=urunTd.querySelectorAll(".ac-item");if(items.length){items.forEach(el=>el.classList.remove("active"));uacActive=Math.max(0,(uacActive||0)-1);items[uacActive].classList.add("active")}}
@@ -519,6 +529,35 @@ function addRow(data,editable){
   tr.querySelectorAll(".td-miktar,.td-fiyat").forEach(el=>{el.addEventListener("input",()=>calcTotals());el.addEventListener("keydown",e=>{if(e.key==="Enter")e.preventDefault()})});
   document.getElementById("tableBody").appendChild(tr);renumber();calcTotals();
   if(!data&&editable)urunTd.focus();
+}
+
+// ═══ YEDEKLEME ═══
+function yedekAl(){
+  const arr=loadAll();
+  if(!arr.length){toast("⚠️ Yedeklenecek teklif yok");return}
+  const blob=new Blob([JSON.stringify(arr,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="deppo_teklif_yedek_"+todayStr().replace(/\./g,"-")+".json";
+  a.click();URL.revokeObjectURL(url);
+  toast("📥 "+arr.length+" teklif yedeklendi");
+}
+function yedekYukle(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const arr=JSON.parse(ev.target.result);
+      if(!Array.isArray(arr)){toast("⚠️ Geçersiz yedek dosyası");return}
+      const mevcut=loadAll();
+      const mevcutIds=new Set(mevcut.map(t=>t.id));
+      let eklenen=0;
+      arr.forEach(t=>{if(!mevcutIds.has(t.id)){saveSingle(t);eklenen++}});
+      toast("📤 "+eklenen+" yeni teklif yüklendi ("+arr.length+" toplam)");
+    }catch(err){toast("⚠️ Dosya okunamadı")}
+  };
+  reader.readAsText(file);
+  e.target.value="";
 }
 
 // ═══ MOBİL NAVİGASYON ═══
