@@ -369,6 +369,8 @@ auth.onAuthStateChanged(user=>{
   if(user){
     document.getElementById("loginOverlay").style.display="none";
     document.getElementById("appContainer").style.display="";
+    // Auth hazır, veriyi dinlemeye başla
+    if(typeof attachDataListener==="function") attachDataListener();
   }else{
     document.getElementById("loginOverlay").style.display="";
     document.getElementById("appContainer").style.display="none";
@@ -638,12 +640,20 @@ function mobileShowDoc(){if(isMobile()){document.getElementById("rightPanel").cl
 function mobileGoBack(){document.getElementById("rightPanel").classList.remove("mobile-open");if(isMobile())document.getElementById("mobileBack").style.display="none"}
 window.addEventListener("resize",()=>{if(!isMobile()){document.getElementById("rightPanel").classList.remove("mobile-open")}});
 
-// ═══ INIT — Firebase Realtime Listener ═══
-teklifRef.on("value",snap=>{
-  const data=snap.val();
-  if(data){_cache=Object.values(data)}else{_cache=[]}
-  renderList(document.getElementById("searchInput").value);
-});
+// ═══ INIT — Firebase Realtime Listener (auth hazır olunca başlar) ═══
+let _listenerAttached=false;
+function attachDataListener(){
+  if(_listenerAttached) return;
+  _listenerAttached=true;
+  teklifRef.on("value",snap=>{
+    const data=snap.val();
+    if(data){_cache=Object.values(data)}else{_cache=[]}
+    renderList(document.getElementById("searchInput").value);
+  },err=>{
+    console.error("Veri okuma hatası:",err);
+    _listenerAttached=false;
+  });
+}
 document.getElementById("statDate").textContent=todayStr();
 </script>
 </body>
